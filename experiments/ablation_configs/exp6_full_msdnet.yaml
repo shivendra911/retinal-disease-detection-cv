@@ -1,0 +1,29 @@
+# Experiment 6: Full MSDNet (all components + MC Dropout uncertainty)
+# This is the final model — all components active
+
+experiment:
+  name: exp6_full_msdnet
+  description: "Complete MSDNet with all components including MC Dropout uncertainty"
+
+model:
+  backbone: efficientnet_b0
+  pretrained: true
+  use_fpn: true
+  split_cbam: true
+  use_vessel: true
+  use_contrastive: true
+  use_mc_dropout: true
+  fpn_out_channels: 256
+  dropout_rate: 0.3
+  mc_dropout_passes: 30
+  uncertainty_threshold: 0.15
+
+training:
+  batch_size: 32
+  epochs: 50
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-2
+  lambda_vessel: 0.5
+  lambda_contrastive: 0.3
+  contrastive_margin_pure: 0.1
+  contrastive_margin_cooccur: 0.3

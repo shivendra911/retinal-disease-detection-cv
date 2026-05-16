@@ -1,0 +1,24 @@
+# Experiment 1: Baseline — EfficientNet-B0 only, single DR head
+# No FPN, no CBAM, no vessel decoder, no contrastive loss
+# Expected: QWK ~0.82
+
+experiment:
+  name: exp1_baseline
+  description: "Vanilla EfficientNet-B0 with single classification head"
+
+model:
+  backbone: efficientnet_b0
+  pretrained: true
+  use_fpn: false
+  split_cbam: false
+  use_vessel: false
+  use_contrastive: false
+  use_mc_dropout: false
+  fpn_out_channels: 256
+  dropout_rate: 0.3
+
+training:
+  batch_size: 32
+  epochs: 50
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-2

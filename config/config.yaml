@@ -1,0 +1,52 @@
+# config/config.yaml
+# IRDAS — All hyperparameters live here. Every training script reads from this file.
+# Do NOT hardcode values elsewhere.
+
+project:
+  name: IRDAS
+  version: 1.0
+  seed: 42
+
+paths:
+  aptos: /kaggle/input/aptos2019-blindness-detection
+  idrid: /kaggle/input/idrid-dataset
+  hrdc: /kaggle/input/hrdc-2023
+  drive: /kaggle/input/drive-retinal-vessel
+  nhanes: /kaggle/input/nhanes-diabetic
+  outputs: /kaggle/working/outputs
+  checkpoints: /kaggle/working/checkpoints
+
+preprocessing:
+  image_size: 224
+  clahe_clip_limit: 2.0
+  clahe_tile_size: 8
+  ben_graham: true
+  od_suppress: true
+
+training:
+  batch_size: 32
+  epochs: 50
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-2
+  scheduler: cosine_annealing
+  T_max: 30
+  warmup_epochs: 5
+
+  # Loss weights
+  lambda_vessel: 0.5
+  lambda_contrastive: 0.3
+  contrastive_margin_pure: 0.1
+  contrastive_margin_cooccur: 0.3
+
+model:
+  backbone: efficientnet_b0
+  pretrained: true
+  fpn_out_channels: 256
+  dropout_rate: 0.3
+  mc_dropout_passes: 30
+  uncertainty_threshold: 0.15
+
+evaluation:
+  primary_metric_dr: quadratic_weighted_kappa
+  primary_metric_hr: auc_roc
+  calibration_metric: ece

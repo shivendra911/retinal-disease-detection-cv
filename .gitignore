@@ -1,0 +1,52 @@
+# === Data (too large for git) ===
+data/raw/
+data/preprocessed/
+*.png
+*.jpg
+*.jpeg
+*.tif
+*.tiff
+
+# === Model checkpoints (too large) ===
+checkpoints/*.pth
+checkpoints/*.pkl
+*.onnx
+
+# === Experiment tracking ===
+wandb/
+logs/*.json
+
+# === Python ===
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+*.so
+
+# === Environment ===
+.env
+.venv/
+env/
+venv/
+
+# === IDE ===
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# === OS ===
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# === Jupyter ===
+.ipynb_checkpoints/
+
+# === Outputs (keep CSVs, exclude images) ===
+outputs/xai_examples/*.png
+outputs/preprocessing_samples/*.png
+outputs/*.png

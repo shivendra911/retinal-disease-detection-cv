@@ -1,0 +1,27 @@
+# Experiment 5: + Contrastive disentanglement loss (NOVEL)
+# Tests the core research contribution — inter-disease feature separation
+
+experiment:
+  name: exp5_contrastive
+  description: "Full architecture + novel contrastive disentanglement loss"
+
+model:
+  backbone: efficientnet_b0
+  pretrained: true
+  use_fpn: true
+  split_cbam: true
+  use_vessel: true
+  use_contrastive: true
+  use_mc_dropout: false
+  fpn_out_channels: 256
+  dropout_rate: 0.3
+
+training:
+  batch_size: 32
+  epochs: 50
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-2
+  lambda_vessel: 0.5
+  lambda_contrastive: 0.3
+  contrastive_margin_pure: 0.1
+  contrastive_margin_cooccur: 0.3

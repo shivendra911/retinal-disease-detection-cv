@@ -1,0 +1,23 @@
+# Experiment 2: + FPN (multi-scale features)
+# Tests whether multi-scale fusion helps detect both tiny and large lesions
+
+experiment:
+  name: exp2_fpn
+  description: "EfficientNet-B0 + FPN multi-scale fusion"
+
+model:
+  backbone: efficientnet_b0
+  pretrained: true
+  use_fpn: true
+  split_cbam: false
+  use_vessel: false
+  use_contrastive: false
+  use_mc_dropout: false
+  fpn_out_channels: 256
+  dropout_rate: 0.3
+
+training:
+  batch_size: 32
+  epochs: 50
+  learning_rate: 1.0e-4
+  weight_decay: 1.0e-2
