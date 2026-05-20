@@ -66,6 +66,14 @@ outputs/xai_examples/*.png
 *.synctex.gz
 *.fdb_latexmk
 
+# Miscellaneous paper & presentation files
+IRDAS_Presentation_Content.md
+MSDNet_Journal_Paper.tex
+format.tex
+paper.tex
+paper_review_journal_gap_analysis.html
+generate_architecture.py
+
 # Ignore logs directory entirely (apart from standard tracking)
 logs/
 
