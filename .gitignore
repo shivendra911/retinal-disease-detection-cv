@@ -48,5 +48,33 @@ Desktop.ini
 
 # === Outputs (keep CSVs, exclude images) ===
 outputs/xai_examples/*.png
+
+# === Extended General Python & Setup Ignores ===
+# Ignore additional large dataset formats
+*.zip
+*.tar
+*.tar.gz
+*.csv
+
+# Ignore compiled LaTeX files
+*.aux
+*.log
+*.out
+*.pdf
+*.toc
+*.fls
+*.synctex.gz
+*.fdb_latexmk
+
+# Ignore logs directory entirely (apart from standard tracking)
+logs/
+
+# Ignore Jupyter extensions
+profile_default/
+ipython_config.py
+
+# Ignore more model formats
+*.pt
+*.h5
 outputs/preprocessing_samples/*.png
 outputs/*.png
