@@ -45,6 +45,8 @@ research_archive/figures/
 *.fls
 *.synctex.gz
 *.fdb_latexmk
+*.tex
+*.pdf
 
 # === Images ===
 *.png
