@@ -1,0 +1,131 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);padding:0 0 20px;background:transparent}
+.bug{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-left:3px solid #DC2626;border-radius:8px;padding:13px 15px;margin-bottom:10px}
+.bug-title{font-size:13px;font-weight:500;color:#DC2626;margin-bottom:4px}
+.bug-body{font-size:11.5px;color:var(--color-text-secondary);line-height:1.6;margin-bottom:8px}
+.mono{font-family:var(--font-mono);font-size:10px;background:var(--color-background-secondary);border-radius:4px;padding:2px 5px}
+.code{background:var(--color-background-secondary);border-radius:6px;padding:9px 11px;font-family:var(--font-mono);font-size:10px;line-height:1.8;margin-top:6px;white-space:pre;overflow-x:auto}
+.fix{background:#F0FDF4;border:0.5px solid #BBF7D0;border-radius:6px;padding:10px 12px;margin-top:8px}
+.fix-label{font-size:9px;font-weight:600;color:#166534;letter-spacing:.5px;margin-bottom:5px}
+.fix-text{font-size:11px;color:#166534;line-height:1.6}
+.c-red{color:#DC2626}
+.c-green{color:#059669;font-weight:500}
+.divider{border:none;border-top:0.5px solid var(--color-border-tertiary);margin:14px 0 12px}
+.label{font-size:9px;font-weight:500;letter-spacing:.5px;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:8px}
+</style>
+
+<div class="label">Three bugs found — fix all three before rerunning</div>
+
+<!-- BUG 1 -->
+<div class="bug">
+<div class="bug-title">🔴 Bug 1 — CRITICAL: Augmentation on ImageNet-normalized floats (Data corruption + potential NaN deadlock)</div>
+<div class="bug-body">
+<strong>What's happening:</strong> Your <span class="mono">preprocess_fundus()</span> returns a float32 array in ImageNet-normalized range (roughly <strong>−2.1 to +2.7</strong>). That value is stored in the cache. Then <span class="mono">__getitem__</span> passes it directly to albumentations transforms like <span class="mono">CLAHE</span>, <span class="mono">ColorJitter</span>, and <span class="mono">RandomBrightnessContrast</span>.<br><br>
+Albumentations expects either uint8 [0–255] or float32 [0.0–1.0]. Passing normalized floats causes CLAHE to receive all-zero/negative inputs, ColorJitter to produce garbage values, and ElasticTransform to produce NaN outputs in some albumentations versions. This means <strong>every single training image is corrupted data entering your model.</strong> This explains NaN losses → the NaN skip continues the loop → CPU stuck spinning.
+</div>
+<div class="code"><span class="c-red"># WRONG — preprocess_fundus normalizes first, then augmentations run on normalized data
+self.cache[i] = preprocess_fundus(img, size=CFG['image_size'])  # returns float32 in [-2.1, 2.7]
+# ... later in __getitem__:
+img = self.transform(image=img)['image']  # CLAHE/ColorJitter see -2.1 to +2.7 → garbage</span></div>
+<div class="fix">
+<div class="fix-label">✓ FIX — Cache raw uint8, normalize AFTER augmentation</div>
+<div class="fix-text">
+In <span class="mono">APTOSDataset.__init__</span>, cache the image WITHOUT normalization:<br><br>
+<div class="code"><span class="c-green"># Store uint8 after preprocessing but BEFORE normalization
+def preprocess_fundus_no_norm(img, size):
+    img = cv2.resize(img, (512, 512))
+    img = ben_graham(img)
+    img = green_channel_clahe(img)
+    img = crop_circle(img)
+    img = cv2.resize(img, (size, size))
+    return img  # uint8 [0-255] — correct for albumentations
+
+# In pre-caching:
+self.cache[i] = preprocess_fundus_no_norm(img, size=CFG['image_size'])
+
+# In __getitem__, augment THEN normalize:
+if self.transform:
+    augmented = self.transform(image=img)['image']  # augment uint8
+    # Normalize after augmentation (ToTensorV2 converts to tensor)
+    # Add Normalize to the END of your augmentation pipeline:
+    # A.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])
+    # ToTensorV2()</span></div>
+Also add <span class="mono">A.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])</span> just before <span class="mono">ToTensorV2()</span> in both <span class="mono">get_train_aug()</span> and <span class="mono">get_val_aug()</span>.
+</div>
+</div>
+</div>
+
+<!-- BUG 2 -->
+<div class="bug">
+<div class="bug-title">🔴 Bug 2 — SLOWLOCK: ElasticTransform + GridDistortion at 512px with num_workers=0 (CPU bottleneck)</div>
+<div class="bug-body">
+<strong>What's happening:</strong> <span class="mono">num_workers=0</span> means ALL augmentation runs in the main process, blocking the training loop. At 512px, <span class="mono">ElasticTransform</span> and <span class="mono">GridDistortion</span> scale quadratically with resolution — they're <strong>5× slower at 512px than 224px</strong>. Each batch of 18 images takes 3–6 seconds of pure CPU time just for augmentation. At 163 batches per epoch, that's <strong>8–16 minutes per epoch × 60 epochs = 8–16 hours total</strong>. This is your 12-hour stuck situation — it's not a crash, the kernel is just computing augmentations for hours.
+</div>
+<div class="code"><span class="c-red"># The slow augmentations at 512px (each takes 50-200ms per image):
+A.ElasticTransform(alpha=120, sigma=6, p=0.2),     # O(n²) — very slow at 512px
+A.GridDistortion(num_steps=5, distort_limit=0.3),  # O(n²) — very slow at 512px
+A.OpticalDistortion(distort_limit=0.05, ...),      # Also slow
+# With num_workers=0 and 18 images per batch: 18 × 150ms = 2.7s per batch</span></div>
+<div class="fix">
+<div class="fix-label">✓ FIX — Remove the 3 slow augmentations AND enable num_workers=2</div>
+<div class="fix-text">
+<div class="code"><span class="c-green"># REMOVE from get_train_aug():
+# A.GridDistortion(...)       ← delete
+# A.OpticalDistortion(...)    ← delete
+# A.ElasticTransform(...)     ← delete
+# A.Downscale(...)            ← delete (causes resolution inconsistency)
+
+# These are sufficient for SOTA fundus augmentation:
+# Flips, rotate, shift-scale-rotate, color jitter, CoarseDropout
+
+# In CFG, change:
+'num_workers': 2,   # Workers only do augmentation (images are cached in RAM)
+                    # Each worker gets a COPY of cache — fine since images are small
+
+# In create_dataloaders(), change:
+nw = CFG.get('num_workers', 2)   # Always use workers regardless of precache
+pw = True   # persistent_workers
+pf = 2      # prefetch_factor</span></div>
+<strong>Why workers are safe here:</strong> Pre-cached images are read-only numpy arrays. Each worker forks and gets its own copy. With 3,662 cached uint8 images at 512px: 3,662 × 512 × 512 × 3 = ~2.9 GB × 2 workers = ~6 GB extra RAM. Kaggle has 30 GB — completely safe.
+</div>
+</div>
+</div>
+
+<!-- BUG 3 -->
+<div class="bug">
+<div class="bug-title">🟡 Bug 3 — MINOR: use_vessel attribute not propagating through DataParallel</div>
+<div class="bug-body">
+<strong>What's happening:</strong> <span class="mono">base.use_vessel = False</span> sets the attribute on the unwrapped model. But when <span class="mono">DataParallel</span> runs the forward pass, it creates replicas internally. The <span class="mono">self.use_vessel</span> attribute on replicas may not be updated. This means the vessel decoder might run when it shouldn't (or vice versa), causing a shape mismatch crash that PyTorch catches as a NCCL timeout — manifesting as a hang.
+</div>
+<div class="code"><span class="c-red"># WRONG — setting attribute on base model, but DataParallel uses replicas:
+base = self._base_model()
+base.use_vessel = False   # Only sets on base, not DataParallel replicas</span></div>
+<div class="fix">
+<div class="fix-label">✓ FIX — Control vessel via training mode, not attribute</div>
+<div class="fix-text">
+<div class="code"><span class="c-green"># In MSDNet.forward(), change the vessel condition to:
+if self.training and hasattr(self, 'use_vessel') and self.use_vessel:
+    out['vessel_pred'] = self.vessel_decoder(P3, P4, P5)
+
+# In train_one_epoch, replace attribute-setting with model.eval()/train():
+# For vessel forward pass, just check self.training inside the model.
+# SIMPLEST FIX: just keep use_vessel=True always during training,
+# the vessel decoder runs every step it should. Remove the attribute toggling.</span></div>
+</div>
+</div>
+</div>
+
+<div class="divider"></div>
+<div class="label">Summary — exact changes in order</div>
+<div style="background:var(--color-background-secondary);border-radius:8px;padding:12px 14px;font-size:11.5px;color:var(--color-text-secondary);line-height:1.9">
+1. Add <span class="mono">A.Normalize(...)</span> before <span class="mono">ToTensorV2()</span> in both aug functions<br>
+2. Change cache to store uint8 (remove normalization from <span class="mono">preprocess_fundus</span> call)<br>
+3. Remove 4 slow augmentations (ElasticTransform, GridDistortion, OpticalDistortion, Downscale)<br>
+4. Set <span class="mono">'num_workers': 2</span> in CFG and use it regardless of precache flag<br>
+5. Fix DataParallel vessel attribute bug<br>
+6. Change <span class="mono">'image_size': 384</span> (512px + heavy aug + 2 GPUs will still OOM; 384px is the sweet spot)<br>
+<br>
+<strong>After these fixes: expected ~60–90 seconds per epoch on 2×T4 at 384px.</strong> Full 60 epochs = 60–90 minutes.
+</div>

@@ -1,0 +1,371 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);padding:0 0 20px;background:transparent}
+.tab-nav{display:flex;gap:4px;margin-bottom:14px;flex-wrap:wrap}
+.tab{font-size:11px;font-weight:500;padding:5px 11px;border-radius:5px;border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer;transition:all .15s}
+.tab.active{background:#534AB7;color:#fff;border-color:#534AB7}
+.panel{display:none}.panel.active{display:block}
+.card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:8px;padding:12px 14px;margin-bottom:7px}
+.card.green{border-left:3px solid #059669;padding-left:11px}
+.card.amber{border-left:3px solid #BA7517;padding-left:11px}
+.card.red{border-left:3px solid #DC2626;padding-left:11px}
+.card.purple{border-left:3px solid #534AB7;padding-left:11px}
+.card-title{font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:3px}
+.card-body{font-size:11px;color:var(--color-text-secondary);line-height:1.6}
+.tag{display:inline-block;font-size:9px;font-weight:500;padding:1px 6px;border-radius:3px;margin-left:5px;vertical-align:middle}
+.t-green{background:#DCFCE7;color:#166534}
+.t-amber{background:#FEF3C7;color:#92400E}
+.t-red{background:#FEE2E2;color:#991B1B}
+.t-purple{background:#EEF2FF;color:#3730A3}
+.t-blue{background:#DBEAFE;color:#1E40AF}
+.label{font-size:9px;font-weight:500;letter-spacing:.5px;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:8px}
+.divider{border:none;border-top:0.5px solid var(--color-border-tertiary);margin:12px 0}
+.qwk-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.qwk-label{font-size:11px;color:var(--color-text-secondary);width:200px;flex-shrink:0}
+.qwk-bar-track{flex:1;height:8px;background:var(--color-background-secondary);border-radius:4px;overflow:hidden}
+.qwk-bar-fill{height:100%;border-radius:4px;transition:width .3s}
+.qwk-val{font-size:11px;font-weight:500;width:38px;text-align:right;flex-shrink:0}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mono{font-family:var(--font-mono);font-size:10.5px;background:var(--color-background-secondary);border-radius:4px;padding:2px 5px}
+.step{display:flex;gap:10px;align-items:flex-start;margin-bottom:8px}
+.step-num{width:22px;height:22px;border-radius:4px;background:#EEF2FF;color:#534AB7;font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+</style>
+
+<div class="tab-nav">
+  <div class="tab active" onclick="show('v2')">V2 Recipe Verdict</div>
+  <div class="tab" onclick="show('missing')">What V2 Misses</div>
+  <div class="tab" onclick="show('sota')">Full SOTA Recipe</div>
+  <div class="tab" onclick="show('qwk')">Expected QWK Gains</div>
+  <div class="tab" onclick="show('code')">Key Code Changes</div>
+</div>
+
+<!-- V2 VERDICT -->
+<div id="v2" class="panel active">
+<div class="label">Their V2 recipe — what's correct and what's not</div>
+
+<div class="card green">
+  <div class="card-title">✓ 384px resolution <span class="tag t-green">Correct — big impact</span></div>
+  <div class="card-body">Microaneurysms literally become 1-2 pixel blobs at 224px. Going to 384px is the single highest-ROI change for DR. Kaggle winner consensus: minimum 380-512px for fundus images. This alone is worth +0.04 to +0.06 QWK.</div>
+</div>
+
+<div class="card green">
+  <div class="card-title">✓ EfficientNet-B3 backbone <span class="tag t-green">Correct — but not maximum</span></div>
+  <div class="card-body">B3 at 12M params is better than B0. However the true Kaggle gold standard for APTOS is EfficientNet-B4 or B5 — B3 is a reasonable middle ground if RAM is the constraint. B4 at 384px is the optimal point on the accuracy/memory curve for T4 GPUs.</div>
+</div>
+
+<div class="card green">
+  <div class="card-title">✓ Disabling Mixup <span class="tag t-green">Correct reasoning</span></div>
+  <div class="card-body">Correct call for ordinal classification. Mixup was designed for hard-label classification, not ordinal grading. Mixed fundus images don't correspond to any real disease state — the model learns nonsense boundaries. CutMix is also problematic for DR for the same reason.</div>
+</div>
+
+<div class="card green">
+  <div class="card-title">✓ Batch size 32 adjustment <span class="tag t-green">Correct for memory</span></div>
+  <div class="card-body">B3 + 384px uses approximately 18-22GB VRAM at batch 32. This is correct. Note: with gradient accumulation steps=2, you can simulate batch 64 without the memory cost — the optimiser sees the same effective batch size.</div>
+</div>
+
+<div class="card amber">
+  <div class="card-title">⚠ Checkpoint fix described vaguely <span class="tag t-amber">Needs specifics</span></div>
+  <div class="card-body">The PyTorch 2.6 UnpicklingError fix requires <span class="mono">weights_only=False</span> in <span class="mono">torch.load()</span>. Not just "a quick fix" — get the exact parameter right or you'll hit it again.</div>
+</div>
+
+<div class="card red">
+  <div class="card-title">✗ No mention of learning rate adjustment <span class="tag t-red">Critical omission</span></div>
+  <div class="card-body">Switching from B0 to B3 and from 224px to 384px changes the gradient scale. The V1 lr=1e-4 is likely too high for B3 fine-tuning. Should drop to 3e-5 or use a warmup. Not mentioned anywhere in V2.</div>
+</div>
+
+<div class="card red">
+  <div class="card-title">✗ No label smoothing <span class="tag t-red">Missing — +0.02 QWK</span></div>
+  <div class="card-body">DR grading has inter-rater disagreement — grade boundaries (especially 1/2 and 2/3) are subjective. Label smoothing (ε=0.1) prevents overconfident predictions at boundaries, which is exactly where QWK penalises most heavily.</div>
+</div>
+
+<div class="card red">
+  <div class="card-title">✗ No TTA at inference <span class="tag t-red">Free +0.01–0.02 QWK</span></div>
+  <div class="card-body">Test-Time Augmentation — average predictions over 5 augmented versions of each test image. Zero training cost, guaranteed improvement. Every competitive Kaggle fundus submission uses TTA. Not mentioned at all.</div>
+</div>
+</div>
+
+<!-- MISSING -->
+<div id="missing" class="panel">
+<div class="label">Techniques V2 doesn't mention that SOTA Kaggle submissions always use</div>
+
+<div class="two-col">
+<div>
+  <div class="card purple">
+    <div class="card-title">Ordinal regression instead of cross-entropy <span class="tag t-purple">+0.03 QWK</span></div>
+    <div class="card-body">DR grades 0→4 are ordinal — grade 3 is "closer to" grade 2 than grade 0. Standard cross-entropy treats all errors equally. Coral loss or MSE on the predicted grade penalises large errors more, perfectly matching QWK's weighting scheme. This is the #1 loss function insight for APTOS.</div>
+  </div>
+
+  <div class="card purple">
+    <div class="card-title">Stratified K-fold CV + ensemble <span class="tag t-purple">+0.02–0.04 QWK</span></div>
+    <div class="card-body">A single train/val split has high variance on APTOS (only 3,662 images). Train 5 folds, ensemble all 5 model predictions at test time. The ensemble variance reduction alone is worth more than switching from B3 to B4.</div>
+  </div>
+
+  <div class="card purple">
+    <div class="card-title">Progressive resizing <span class="tag t-purple">Faster convergence</span></div>
+    <div class="card-body">Start training at 224px for epochs 1-15, then fine-tune at 384px for epochs 16-50. The model learns coarse structure fast at small resolution, then sharpens details at large resolution. Converges 30% faster than training at 384px from epoch 1.</div>
+  </div>
+
+  <div class="card purple">
+    <div class="card-title">Freeze then unfreeze backbone <span class="tag t-purple">Prevents early overfitting</span></div>
+    <div class="card-body">Epochs 1-5: freeze backbone, train only the head (lr=1e-3). Epochs 6+: unfreeze all layers with differential learning rates — backbone lr=1e-5, head lr=1e-4. Prevents destroying pretrained features in early epochs.</div>
+  </div>
+</div>
+
+<div>
+  <div class="card purple">
+    <div class="card-title">Ophthalmology-specific augmentation <span class="tag t-purple">Domain-critical</span></div>
+    <div class="card-body">Standard augmentation pipelines are wrong for fundus. You need: green channel isolation (retinal vessels have highest contrast here), random blur to simulate cataract haze, random darkness to simulate poorly dilated pupil, CLAHE strength variation. Generic brightness/contrast jitter is insufficient.</div>
+  </div>
+
+  <div class="card purple">
+    <div class="card-title">Pseudo-labelling on EyePACS <span class="tag t-purple">+0.01–0.03 QWK</span></div>
+    <div class="card-body">Train initial model → predict on a subset of EyePACS unlabelled data → keep high-confidence predictions (softmax > 0.95) → add as training data. This is what pushed Kaggle winners from 0.87 to 0.93. Legal — EyePACS is public.</div>
+  </div>
+
+  <div class="card purple">
+    <div class="card-title">QWK-aware threshold optimisation <span class="tag t-purple">+0.01 QWK free</span></div>
+    <div class="card-body">The model outputs continuous probabilities. Rounding to 0/1/2/3/4 uses thresholds [0.5, 1.5, 2.5, 3.5]. Optimising these thresholds on the validation set (scipy.optimize) to maximise QWK directly gains ~0.01 at zero cost.</div>
+  </div>
+
+  <div class="card purple">
+    <div class="card-title">SWA — Stochastic Weight Averaging <span class="tag t-purple">+0.01 QWK</span></div>
+    <div class="card-body">Average model weights across the last 10 epochs of training instead of using the single best checkpoint. PyTorch has native SWA support. Consistently improves calibration and generalisation on medical image tasks at zero computational cost.</div>
+  </div>
+</div>
+</div>
+</div>
+
+<!-- SOTA RECIPE -->
+<div id="sota" class="panel">
+<div class="label">Complete SOTA recipe — what a Kaggle top-10 submission actually does</div>
+
+<div class="step">
+  <div class="step-num">1</div>
+  <div>
+    <div class="card-title" style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px">Preprocessing: Ben Graham + CLAHE on green channel only</div>
+    <div class="card-body" style="font-size:11px;color:var(--color-text-secondary);line-height:1.6">Your V1 preprocessing was correct. Keep it. The green channel carries 80% of DR-relevant information. Resize to 512px (not 384px) — the extra resolution matters for Grade 1 microaneurysms.</div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">2</div>
+  <div>
+    <div class="card-title" style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px">Model: EfficientNet-B4 or EfficientNet-B5 <span class="tag t-blue">not B3</span></div>
+    <div class="card-body" style="font-size:11px;color:var(--color-text-secondary);line-height:1.6">B4 (19M params) is the sweet spot for APTOS. B5 (30M) is better but tight at batch 16 on T4. Use <span class="mono">timm.create_model('tf_efficientnet_b4_ns')</span> — the "ns" (noisy student) variant is pretrained on a much larger dataset and consistently outperforms standard B4 by 0.01-0.02 QWK on medical images.</div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">3</div>
+  <div>
+    <div class="card-title" style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px">Loss: Coral ordinal loss + label smoothing ε=0.1</div>
+    <div class="card-body" style="font-size:11px;color:var(--color-text-secondary);line-height:1.6">Replace CrossEntropyLoss entirely. Coral loss (Consistent Rank Logits) is designed for ordinal regression and directly aligns with QWK's penalty structure. pip install coral-pytorch. Combine with label smoothing to handle inter-grader disagreement at grade boundaries.</div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">4</div>
+  <div>
+    <div class="card-title" style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px">Training: Progressive resize + freeze-unfreeze + differential LR</div>
+    <div class="card-body" style="font-size:11px;color:var(--color-text-secondary);line-height:1.6">Epochs 1-5 at 224px, backbone frozen, head lr=1e-3. Epochs 6-20 at 384px, unfreeze all, backbone lr=3e-5, head lr=1e-4. Epochs 21-50 at 512px (if memory allows), cosine annealing to zero. Batch 16-24 depending on resolution.</div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">5</div>
+  <div>
+    <div class="card-title" style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px">5-Fold stratified CV + SWA on each fold</div>
+    <div class="card-body" style="font-size:11px;color:var(--color-text-secondary);line-height:1.6">Train 5 complete models on 5 different train/val splits. Apply SWA (average last 10 epoch weights) to each fold model. Keep all 5 models — you'll ensemble them at inference.</div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-num">6</div>
+  <div>
+    <div class="card-title" style="font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px">Inference: TTA × 8 + fold ensemble + threshold optimisation</div>
+    <div class="card-body" style="font-size:11px;color:var(--color-text-secondary);line-height:1.6">For each test image: 8 augmented versions (flips + rotations) → average → repeat across 5 fold models → average 40 predictions total → apply scipy-optimised QWK thresholds. This inference stack alone is worth +0.03 over a single model without TTA.</div>
+  </div>
+</div>
+
+<div class="card" style="background:var(--color-background-secondary);margin-top:4px">
+  <div class="card-title" style="font-size:11px">Realistic QWK trajectory with full recipe</div>
+  <div class="card-body" style="font-size:11px;margin-top:4px">V1 baseline → 0.74 → V2 recipe → ~0.83-0.85 → Full SOTA recipe → <strong style="color:#534AB7">0.88-0.91</strong>. Top Kaggle leaderboard was 0.93 but used massive pseudo-labelling. For a research paper, 0.88+ is genuinely competitive with published work.</div>
+</div>
+</div>
+
+<!-- QWK GAINS -->
+<div id="qwk" class="panel">
+<div class="label">Expected QWK gains per technique — cumulative from 0.74 baseline</div>
+
+<div style="margin-bottom:16px">
+  <div class="qwk-row">
+    <div class="qwk-label">V1 baseline (B0, 224px)</div>
+    <div class="qwk-bar-track"><div class="qwk-bar-fill" style="width:74%;background:#94A3B8"></div></div>
+    <div class="qwk-val" style="color:#94A3B8">0.74</div>
+  </div>
+  <div class="qwk-row">
+    <div class="qwk-label">+ 384px resolution</div>
+    <div class="qwk-bar-track"><div class="qwk-bar-fill" style="width:80%;background:#60A5FA"></div></div>
+    <div class="qwk-val" style="color:#60A5FA">+0.06</div>
+  </div>
+  <div class="qwk-row">
+    <div class="qwk-label">+ EfficientNet-B4-NS backbone</div>
+    <div class="qwk-bar-track"><div class="qwk-bar-fill" style="width:83%;background:#34D399"></div></div>
+    <div class="qwk-val" style="color:#34D399">+0.03</div>
+  </div>
+  <div class="qwk-row">
+    <div class="qwk-label">+ Coral ordinal loss</div>
+    <div class="qwk-bar-track"><div class="qwk-bar-fill" style="width:86%;background:#A78BFA"></div></div>
+    <div class="qwk-val" style="color:#A78BFA">+0.03</div>
+  </div>
+  <div class="qwk-row">
+    <div class="qwk-label">+ Label smoothing ε=0.1</div>
+    <div class="qwk-bar-track"><div class="qwk-bar-fill" style="width:87%;background:#F472B6"></div></div>
+    <div class="qwk-val" style="color:#F472B6">+0.01</div>
+  </div>
+  <div class="qwk-row">
+    <div class="qwk-label">+ Freeze-unfreeze + diff. LR</div>
+    <div class="qwk-bar-track"><div class="qwk-bar-fill" style="width:88%;background:#FBBF24"></div></div>
+    <div class="qwk-val" style="color:#FBBF24">+0.01</div>
+  </div>
+  <div class="qwk-row">
+    <div class="qwk-label">+ 5-fold CV + SWA ensemble</div>
+    <div class="qwk-bar-track"><div class="qwk-bar-fill" style="width:91%;background:#F97316"></div></div>
+    <div class="qwk-val" style="color:#F97316">+0.03</div>
+  </div>
+  <div class="qwk-row">
+    <div class="qwk-label">+ TTA ×8 at inference</div>
+    <div class="qwk-bar-track"><div class="qwk-bar-fill" style="width:92%;background:#EF4444"></div></div>
+    <div class="qwk-val" style="color:#EF4444">+0.01</div>
+  </div>
+  <div class="qwk-row">
+    <div class="qwk-label">+ QWK threshold optimisation</div>
+    <div class="qwk-bar-track"><div class="qwk-bar-fill" style="width:93%;background:#534AB7"></div></div>
+    <div class="qwk-val" style="color:#534AB7">+0.01</div>
+  </div>
+</div>
+
+<div style="font-size:10px;color:var(--color-text-tertiary);margin-bottom:12px">Gains are cumulative estimates based on APTOS 2019 Kaggle leaderboard analysis and published ablation studies. Actual gains vary by implementation quality.</div>
+
+<div class="divider"></div>
+<div class="label">Priority order — highest ROI first</div>
+<div class="card green" style="margin-bottom:5px"><div class="card-title">Priority 1 — Do these before anything else</div><div class="card-body">Resolution to 512px · EfficientNet-B4-NS · Coral ordinal loss. These three changes alone take you from 0.74 to ~0.86.</div></div>
+<div class="card amber" style="margin-bottom:5px"><div class="card-title">Priority 2 — Do these before the paper deadline</div><div class="card-body">5-fold CV + ensemble · TTA ×8 at inference · Label smoothing. Gets you to 0.89+.</div></div>
+<div class="card" style="background:var(--color-background-secondary)"><div class="card-title">Priority 3 — Nice to have</div><div class="card-body">QWK threshold optimisation · SWA · Progressive resizing. Marginal gains, low effort.</div></div>
+</div>
+
+<!-- CODE -->
+<div id="code" class="panel">
+<div class="label">Exact code changes — copy these in</div>
+
+<div class="card purple" style="margin-bottom:8px">
+  <div class="card-title">1 — Switch to EfficientNet-B4-NS (Noisy Student)</div>
+  <div class="card-body" style="margin-top:6px">
+    <div class="mono" style="display:block;padding:8px 10px;line-height:1.8;white-space:pre">
+# Replace this:
+model = timm.create_model('efficientnet_b3', pretrained=True, num_classes=5)
+
+# With this:
+model = timm.create_model('tf_efficientnet_b4_ns', pretrained=True, num_classes=1)
+# num_classes=1 because Coral loss uses a single output rank neuron
+    </div>
+  </div>
+</div>
+
+<div class="card purple" style="margin-bottom:8px">
+  <div class="card-title">2 — Coral ordinal loss (replaces CrossEntropy entirely)</div>
+  <div class="card-body" style="margin-top:6px">
+    <div class="mono" style="display:block;padding:8px 10px;line-height:1.8;white-space:pre">
+pip install coral-pytorch
+
+from coral_pytorch.losses import coral_loss
+from coral_pytorch.layers import CoralLayer
+
+# Replace your FC head:
+model.classifier = CoralLayer(in_features=model.num_features, num_classes=5)
+
+# In your training loop, replace loss computation:
+logits = model(images)
+loss = coral_loss(logits, labels, num_classes=5)
+
+# At inference, convert logits to class:
+from coral_pytorch.dataset import corn_label_from_logits
+pred_grades = corn_label_from_logits(logits).float()
+    </div>
+  </div>
+</div>
+
+<div class="card purple" style="margin-bottom:8px">
+  <div class="card-title">3 — TTA at inference (8 augmented passes)</div>
+  <div class="card-body" style="margin-top:6px">
+    <div class="mono" style="display:block;padding:8px 10px;line-height:1.8;white-space:pre">
+import torch, torchvision.transforms.functional as TF
+
+def predict_with_tta(model, image_tensor, n_tta=8):
+    model.eval()
+    preds = []
+    augs = [
+        lambda x: x,
+        lambda x: TF.hflip(x),
+        lambda x: TF.vflip(x),
+        lambda x: TF.hflip(TF.vflip(x)),
+        lambda x: TF.rotate(x, 90),
+        lambda x: TF.rotate(x, 180),
+        lambda x: TF.rotate(x, 270),
+        lambda x: TF.hflip(TF.rotate(x, 90)),
+    ]
+    with torch.no_grad():
+        for aug in augs[:n_tta]:
+            out = model(aug(image_tensor))
+            preds.append(corn_label_from_logits(out).float())
+    return torch.stack(preds).mean(0)  # average grade across 8 passes
+    </div>
+  </div>
+</div>
+
+<div class="card purple" style="margin-bottom:8px">
+  <div class="card-title">4 — Fix PyTorch 2.6 checkpoint loading</div>
+  <div class="card-body" style="margin-top:6px">
+    <div class="mono" style="display:block;padding:8px 10px;line-height:1.8;white-space:pre">
+# Replace this (breaks in PyTorch 2.6):
+checkpoint = torch.load('msdnet_best.pth')
+
+# With this:
+checkpoint = torch.load('msdnet_best.pth', weights_only=False, map_location='cuda')
+model.load_state_dict(checkpoint['model_state_dict'])
+    </div>
+  </div>
+</div>
+
+<div class="card purple">
+  <div class="card-title">5 — QWK threshold optimisation (run after training, before submission)</div>
+  <div class="card-body" style="margin-top:6px">
+    <div class="mono" style="display:block;padding:8px 10px;line-height:1.8;white-space:pre">
+from scipy.optimize import minimize
+from sklearn.metrics import cohen_kappa_score
+
+def qwk_threshold_search(val_probs, val_labels):
+    """val_probs: continuous predicted grades (0.0-4.0 float)"""
+    def neg_qwk(thresholds):
+        preds = val_probs.copy()
+        for i, t in enumerate(sorted(thresholds)):
+            preds[val_probs > t] = i + 1
+        return -cohen_kappa_score(val_labels, preds.clip(0,4).astype(int),
+                                   weights='quadratic')
+    result = minimize(neg_qwk, x0=[0.5, 1.5, 2.5, 3.5],
+                      method='Nelder-Mead')
+    return sorted(result.x)  # use these thresholds at test time
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+function show(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>

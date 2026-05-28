@@ -1,88 +1,54 @@
-# === Data (too large for git) ===
-data/raw/
-data/preprocessed/
-*.png
-*.jpg
-*.jpeg
-*.tif
-*.tiff
-
-# === Model checkpoints (too large) ===
-checkpoints/*.pth
-checkpoints/*.pkl
-*.onnx
-
-# === Experiment tracking ===
-wandb/
-logs/*.json
-
-# === Python ===
+# === Python & General ===
 __pycache__/
 *.pyc
 *.pyo
-*.egg-info/
-dist/
-build/
-.eggs/
-*.so
-
-# === Environment ===
-.env
-.venv/
+*.pyd
+.Python
 env/
 venv/
+.venv/
+.env
+.ipynb_checkpoints/
+.DS_Store
 
 # === IDE ===
 .vscode/
 .idea/
-*.swp
-*.swo
 
-# === OS ===
-.DS_Store
-Thumbs.db
-Desktop.ini
+# === Deployment App ===
+deployment_app/models_cache/*.pth
+!deployment_app/models_cache/.gitkeep
+deployment_app/frontend/node_modules/
+deployment_app/frontend/dist/
+deployment_app/frontend/.env
 
-# === Jupyter ===
-.ipynb_checkpoints/
+# === Research Archive Data & Heavy Files ===
+research_archive/data/
+research_archive/checkpoints/
+research_archive/logs/
+research_archive/outputs/
+research_archive/figures/
+**/*.pth
+**/*.pt
+**/*.pkl
+**/*.onnx
+**/*.zip
+**/*.tar*
+**/*.csv
+**/*.h5
 
-# === Outputs (keep CSVs, exclude images) ===
-outputs/xai_examples/*.png
-
-# === Extended General Python & Setup Ignores ===
-# Ignore additional large dataset formats
-*.zip
-*.tar
-*.tar.gz
-*.csv
-
-# Ignore compiled LaTeX files
+# === LaTeX & Docs ===
 *.aux
 *.log
 *.out
-*.pdf
 *.toc
 *.fls
 *.synctex.gz
 *.fdb_latexmk
 
-# Miscellaneous paper & presentation files
-IRDAS_Presentation_Content.md
-MSDNet_Journal_Paper.tex
-format.tex
-paper.tex
-paper_review_journal_gap_analysis.html
-generate_architecture.py
-
-# Ignore logs directory entirely (apart from standard tracking)
-logs/
-
-# Ignore Jupyter extensions
-profile_default/
-ipython_config.py
-
-# Ignore more model formats
-*.pt
-*.h5
-outputs/preprocessing_samples/*.png
-outputs/*.png
+# === Images ===
+*.png
+*.jpg
+*.jpeg
+*.tif
+*.tiff

@@ -1,0 +1,152 @@
+# ── BiFPN ──────────────────────────────────────────────────
+class DepthwiseSeparableConv(nn.Module):
+    def __init__(self, in_ch, out_ch):
+        super().__init__()
+        self.dw = nn.Conv2d(in_ch, in_ch, 3, padding=1, groups=in_ch, bias=False)
+        self.pw = nn.Conv2d(in_ch, out_ch, 1, bias=False)
+        self.bn = nn.BatchNorm2d(out_ch, eps=1e-3, momentum=0.01)
+
+    def forward(self, x):
+        return F.relu(self.bn(self.pw(self.dw(x))))
+
+
+class BiFPNLayer(nn.Module):
+    """Single BiFPN layer (top-down + bottom-up with fast-normalised fusion)."""
+    def __init__(self, num_features: int, ch: int, eps: float = 1e-4):
+        super().__init__()
+        self.eps = eps
+        self.num_feat = num_features
+
+        # Learnable fusion weights
+        self.w_td = nn.ParameterList([nn.Parameter(torch.ones(2)) for _ in range(num_features - 1)])
+        self.w_bu = nn.ParameterList([nn.Parameter(torch.ones(3)) for _ in range(num_features - 2)])
+        self.w_bu_last = nn.Parameter(torch.ones(2))
+
+        self.conv_td = nn.ModuleList([DepthwiseSeparableConv(ch, ch) for _ in range(num_features - 1)])
+        self.conv_bu = nn.ModuleList([DepthwiseSeparableConv(ch, ch) for _ in range(num_features - 1)])
+
+    def _fuse(self, feats, weights):
+        w = F.relu(weights)
+        w = w / (w.sum() + self.eps)
+        return sum(f * wi for f, wi in zip(feats, w))
+
+    def forward(self, feats):
+        # feats: list of tensors [P3, P4, P5, P6] (coarse → fine order, i.e. biggest stride last)
+        # Top-down pass
+        td = [None] * self.num_feat
+        td[-1] = feats[-1]
+        for i in range(self.num_feat - 2, -1, -1):
+            up = F.interpolate(td[i + 1], size=feats[i].shape[-2:], mode='nearest')
+            td[i] = self.conv_td[i](self._fuse([feats[i], up], self.w_td[i]))
+
+        # Bottom-up pass
+        out = [None] * self.num_feat
+        out[0] = td[0]
+        for i in range(1, self.num_feat - 1):
+            down = F.max_pool2d(out[i - 1], kernel_size=2, stride=2)
+            if down.shape[-2:] != td[i].shape[-2:]:
+                down = F.adaptive_avg_pool2d(down, td[i].shape[-2:])
+            out[i] = self.conv_bu[i - 1](self._fuse([feats[i], td[i], down], self.w_bu[i - 1]))
+        # Last level: only 2 inputs
+        down = F.max_pool2d(out[-2], kernel_size=2, stride=2)
+        if down.shape[-2:] != td[-1].shape[-2:]:
+            down = F.adaptive_avg_pool2d(down, td[-1].shape[-2:])
+        out[-1] = self.conv_bu[-1](self._fuse([feats[-1], down], self.w_bu_last))
+        return out
+
+
+class BiFPN(nn.Module):
+    def __init__(self, in_channels: list, out_ch: int, num_layers: int):
+        super().__init__()
+        num_feat = len(in_channels)
+        # Lateral convs: project each backbone level to out_ch
+        self.laterals = nn.ModuleList([
+            nn.Sequential(
+                nn.Conv2d(c, out_ch, 1, bias=False),
+                nn.BatchNorm2d(out_ch, eps=1e-3, momentum=0.01),
+                nn.ReLU(inplace=True)
+            ) for c in in_channels
+        ])
+        self.layers = nn.ModuleList([
+            BiFPNLayer(num_feat, out_ch) for _ in range(num_layers)
+        ])
+
+    def forward(self, feats):
+        feats = [lat(f) for lat, f in zip(self.laterals, feats)]
+        for layer in self.layers:
+            feats = layer(feats)
+        return feats
+
+
+# ── Multi-Scale Discriminative Pooling ─────────────────────
+class MSDPooling(nn.Module):
+    """
+    Concatenates GAP across k BiFPN levels, then projects to a single vector.
+    k levels → each contributes `ch` features → total k*ch → projected to ch.
+    """
+    def __init__(self, ch: int, k: int):
+        super().__init__()
+        self.k   = k
+        self.gap = nn.AdaptiveAvgPool2d(1)
+        self.proj = nn.Sequential(
+            nn.Linear(ch * k, ch),
+            nn.BatchNorm1d(ch),
+            nn.ReLU(inplace=True),
+        )
+
+    def forward(self, feats: list):
+        # feats is a list of BiFPN output maps; take the last k
+        selected = feats[-self.k:] if len(feats) >= self.k else feats
+        pooled   = [self.gap(f).flatten(1) for f in selected]
+        # If fewer than k maps, repeat the last one
+        while len(pooled) < self.k:
+            pooled.append(pooled[-1])
+        return self.proj(torch.cat(pooled, dim=1))
+
+
+# ── CORAL Ordinal Head ──────────────────────────────────────
+class CoralHead(nn.Module):
+    """
+    CORAL (COnsistent RAnk Logits) head.
+    Outputs CORAL_LEVELS binary logits with shared bias trick.
+    """
+    def __init__(self, in_features: int, num_levels: int, dropout: float):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+        self.fc      = nn.Linear(in_features, 1, bias=False)
+        self.bias    = nn.Parameter(torch.zeros(num_levels))
+
+    def forward(self, x):
+        x = self.dropout(x)
+        return self.fc(x) + self.bias   # (B, num_levels)
+
+
+# ── Full DR Teacher ─────────────────────────────────────────
+class DRTeacher(nn.Module):
+    """
+    Phase 1 architecture.
+    backbone → BiFPN → MSDPooling → CoralHead
+    """
+    def __init__(self, cfg: dict):
+        super().__init__()
+        self.backbone = timm.create_model(
+            cfg['backbone'],
+            pretrained     = False,
+            features_only  = True,
+            drop_path_rate = cfg['drop_path_rate'],
+            out_indices    = (1, 2, 3, 4),   # stride 4, 8, 16, 32
+        )
+        in_channels = self.backbone.feature_info.channels()   # e.g. [32, 56, 160, 448]
+        bifpn_ch    = cfg['bifpn_channels']
+        self.bifpn  = BiFPN(in_channels, bifpn_ch, cfg['bifpn_layers'])
+        self.msd    = MSDPooling(bifpn_ch, cfg['msd_k'])
+        self.head   = CoralHead(bifpn_ch, CORAL_LEVELS, cfg['dropout'])
+
+    def forward(self, x):
+        feats  = self.backbone(x)    # list of 4 feature maps
+        feats  = self.bifpn(feats)   # same length, ch=256
+        embed  = self.msd(feats)     # (B, 256)
+        logits = self.head(embed)    # (B, 4)
+        return logits
+
+

@@ -1,0 +1,89 @@
+# config/config.yaml
+# IRDAS — All hyperparameters live here. Every training script reads from this file.
+# Do NOT hardcode values elsewhere.
+#
+# V2 → SOTA upgrade: EfficientNet-B4-NS, CORAL ordinal loss, 384px resolution,
+# freeze-unfreeze, differential LR, SWA, progressive resizing, TTA, threshold opt.
+
+project:
+  name: IRDAS
+  version: 2.0
+  seed: 42
+
+paths:
+  aptos: /kaggle/input/aptos2019-blindness-detection
+  idrid: /kaggle/input/idrid-dataset
+  hrdc: /kaggle/input/hrdc-2023
+  drive: /kaggle/input/drive-retinal-vessel
+  nhanes: /kaggle/input/nhanes-diabetic
+  outputs: /kaggle/working/outputs
+  checkpoints: /kaggle/working/checkpoints
+
+preprocessing:
+  image_size: 384               # Upgraded from 224 — critical for microaneurysm detection
+  clahe_clip_limit: 2.0
+  clahe_tile_size: 8
+  ben_graham: true
+  od_suppress: true
+  green_channel_emphasis: true  # NEW: emphasize green channel (80% of DR signal)
+
+training:
+  # === Core training ===
+  batch_size: 24                # B4 + 384px at batch 24 fits T4 GPU
+  epochs: 50
+  learning_rate: 3.0e-5         # Lower LR for B4 fine-tuning (was 1e-4)
+  weight_decay: 1.0e-2
+  gradient_accumulation_steps: 2  # Effective batch = 24 × 2 = 48
+
+  # === Scheduler ===
+  scheduler: cosine_annealing
+  T_max: 50
+  warmup_epochs: 5              # Linear warmup over first 5 epochs
+  warmup_lr: 1.0e-6             # Warmup start LR
+
+  # === Freeze-Unfreeze + Differential LR ===
+  freeze_epochs: 5              # Freeze backbone for first 5 epochs
+  head_lr: 1.0e-3               # Head LR during frozen phase
+  backbone_lr_multiplier: 0.1   # Backbone LR = learning_rate × 0.1 after unfreeze
+
+  # === Progressive Resizing ===
+  progressive_resize:
+    enabled: true
+    phase1_size: 224            # Epochs 1-5: train at 224px (fast, coarse features)
+    phase1_epochs: 5
+    phase2_size: 384            # Epochs 6+: fine-tune at 384px (sharp details)
+
+  # === SWA (Stochastic Weight Averaging) ===
+  swa_start_epoch: 40           # Average weights from epoch 40 to 50
+  swa_lr: 1.0e-5                # SWA learning rate
+
+  # === Loss ===
+  loss_type: coral               # 'coral' (SOTA) or 'focal' (legacy)
+  label_smoothing: 0.1           # Handles inter-grader disagreement at boundaries
+  lambda_vessel: 0.5
+  lambda_contrastive: 0.3
+  contrastive_margin_pure: 0.1
+  contrastive_margin_cooccur: 0.3
+
+  # === K-Fold CV ===
+  kfold: 5                       # Number of CV folds (set to 1 for single split)
+
+model:
+  backbone: tf_efficientnet_b4_ns  # Upgraded from efficientnet_b0 (Noisy Student)
+  pretrained: true
+  dr_num_classes: 5                # 5 grades, CORAL outputs K-1=4 logits
+  dr_ordinal: true                 # True = CORAL ordinal (K-1 logits), False = softmax (K logits)
+  fpn_out_channels: 256
+  dropout_rate: 0.3
+  mc_dropout_passes: 30
+  uncertainty_threshold: 0.15
+
+inference:
+  tta_passes: 8                   # Test-Time Augmentation: 8 geometric transforms
+  optimize_thresholds: true       # QWK threshold optimization on val set
+  ensemble_folds: true            # Ensemble all K fold models at inference
+
+evaluation:
+  primary_metric_dr: quadratic_weighted_kappa
+  primary_metric_hr: auc_roc
+  calibration_metric: ece

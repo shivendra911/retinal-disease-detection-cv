@@ -1,0 +1,566 @@
+
+<!DOCTYPE html>
+<html><head>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);padding:4px 0 24px;background:transparent}
+.tab-nav{display:flex;gap:4px;margin-bottom:14px;flex-wrap:wrap}
+.tab{font-size:11px;font-weight:500;padding:5px 11px;border-radius:5px;border:0.5px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-secondary);cursor:pointer;transition:all .15s}
+.tab.active{background:#534AB7;color:#fff;border-color:#534AB7}
+.panel{display:none}.panel.active{display:block}
+.label{font-size:9px;font-weight:500;letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px;color:var(--color-text-tertiary)}
+.item{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:7px;margin-bottom:6px;border:0.5px solid transparent}
+.item.fatal{background:#FEF2F2;border-color:#FECACA}
+.item.major{background:#FFFBEB;border-color:#FDE68A}
+.item.minor{background:#F0FDF4;border-color:#BBF7D0}
+.item.rewrite{background:#EEF2FF;border-color:#C7D2FE}
+.sev{font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;flex-shrink:0;margin-top:1px;width:52px;text-align:center}
+.sev.fatal{background:#FEE2E2;color:#991B1B}
+.sev.major{background:#FEF3C7;color:#92400E}
+.sev.minor{background:#DCFCE7;color:#166534}
+.sev.rewrite{background:#E0E7FF;color:#3730A3}
+.item-body{}
+.item-title{font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px}
+.item-desc{font-size:11px;color:var(--color-text-secondary);line-height:1.55}
+.item-fix{font-size:10px;color:var(--color-text-tertiary);margin-top:3px;font-style:italic}
+.divider{border:none;border-top:0.5px solid var(--color-border-tertiary);margin:12px 0 10px}
+.count-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.count-card{border-radius:6px;padding:8px 14px;text-align:center;flex:1;min-width:80px}
+.count-val{font-size:20px;font-weight:500;margin-bottom:1px}
+.count-label{font-size:9px;font-weight:500;letter-spacing:.3px}
+.cc-fatal{background:#FEF2F2;color:#991B1B}
+.cc-major{background:#FFFBEB;color:#92400E}
+.cc-minor{background:#F0FDF4;color:#166534}
+.cc-rewrite{background:#EEF2FF;color:#3730A3}
+</style>
+</head><body>
+
+<div class="tab-nav">
+  <div class="tab active" onclick="show('overview')">Overview</div>
+  <div class="tab" onclick="show('format')">Format & Structure</div>
+  <div class="tab" onclick="show('content')">Content Gaps</div>
+  <div class="tab" onclick="show('method')">Methodology</div>
+  <div class="tab" onclick="show('results')">Results & Eval</div>
+  <div class="tab" onclick="show('writing')">Writing</div>
+  <div class="tab" onclick="show('refs')">References</div>
+  <div class="tab" onclick="show('checklist')">Final Checklist</div>
+</div>
+
+<!-- OVERVIEW -->
+<div id="overview" class="panel active">
+<div class="count-row">
+  <div class="count-card cc-fatal"><div class="count-val">7</div><div class="count-label">Fatal — desk reject risk</div></div>
+  <div class="count-card cc-major"><div class="count-val">12</div><div class="count-label">Major — reviewer will demand</div></div>
+  <div class="count-card cc-minor"><div class="count-val">9</div><div class="count-label">Minor — weakens paper</div></div>
+  <div class="count-card cc-rewrite"><div class="count-val">5</div><div class="count-label">Rewrite — clarity issues</div></div>
+</div>
+
+<div class="label">The single biggest problem — read this first</div>
+<div class="item fatal">
+  <div class="sev fatal">FATAL</div>
+  <div class="item-body">
+    <div class="item-title">Wrong document class — this will be desk rejected at any journal</div>
+    <div class="item-desc">You are using <code>\documentclass[conference]{IEEEtran}</code> — the IEEE conference paper template. Computers in Biology and Medicine (your target journal) uses the Elsevier article class. IEEE Access uses <code>IEEEtran</code> journal mode, not conference mode. A submission with the wrong template signals to editors that the paper was never meant for that journal.</div>
+    <div class="item-fix">Fix: Change to \documentclass{elsarticle} for Elsevier journals. For IEEE Access use \documentclass[journal]{IEEEtran}.</div>
+  </div>
+</div>
+
+<div class="item fatal">
+  <div class="sev fatal">FATAL</div>
+  <div class="item-body">
+    <div class="item-title">Paper has no figures — this alone will get a rejection</div>
+    <div class="item-desc">The entire paper has zero figures. Journal papers in computer vision require: (1) an architecture diagram as Figure 1, (2) preprocessing comparison showing before/after, (3) Grad-CAM++ heatmap examples as qualitative results, (4) a calibration reliability diagram, (5) training loss curves. Reviewers cannot evaluate your architecture from equations alone. A CV paper with no visual results is unpublishable.</div>
+    <div class="item-fix">Fix: You need minimum 4 figures. These must be created during experiments and inserted.</div>
+  </div>
+</div>
+
+<div class="item fatal">
+  <div class="sev fatal">FATAL</div>
+  <div class="item-body">
+    <div class="item-title">No comparison with state-of-the-art — every journal reviewer will demand this</div>
+    <div class="item-desc">There is no table comparing MSDNet against prior methods on APTOS. This is not optional. Reviewers will immediately write: "The authors do not compare their method against existing approaches. The novelty and improvement cannot be assessed." Without SOTA comparison, the paper cannot be accepted anywhere.</div>
+    <div class="item-fix">Fix: Add Table comparing against: EfficientNet-B0 standalone, ResNet-50, VGG-16 fine-tuned, any published APTOS Kaggle winners, and 2-3 recent DR papers from 2021-2024.</div>
+  </div>
+</div>
+
+<div class="item fatal">
+  <div class="sev fatal">FATAL</div>
+  <div class="item-body">
+    <div class="item-title">Critical training flaw not addressed: APTOS has no HR labels, HRDC has no DR labels</div>
+    <div class="item-desc">You claim to train a unified model on both diseases simultaneously, but APTOS only labels DR grades and HRDC only labels HR presence. How do you compute the joint loss on a single batch? How do you handle missing labels? This is a fundamental implementation question that every reviewer who actually knows ML will ask. There is no answer currently in the paper.</div>
+    <div class="item-fix">Fix: Explicitly describe the alternating batch training strategy or pseudo-labeling approach. This belongs in Section III with an algorithm box.</div>
+  </div>
+</div>
+
+<div class="item fatal">
+  <div class="sev fatal">FATAL</div>
+  <div class="item-body">
+    <div class="item-title">All results are TBD — paper cannot be submitted in this state</div>
+    <div class="item-desc">Every result table says TBD. This is understandable as a draft but the paper structure must be updated once experiments run. The paper should only be submitted after all numbers are filled. The current draft is a writing skeleton, not a submittable paper.</div>
+    <div class="item-fix">Complete experiments first. Then fill every TBD before submission.</div>
+  </div>
+</div>
+
+<div class="item fatal">
+  <div class="sev fatal">FATAL</div>
+  <div class="item-body">
+    <div class="item-title">Only 11 references — journals expect 35–55 for this topic</div>
+    <div class="item-desc">11 references signals to reviewers that the authors haven't read the field. Computers in Biology and Medicine papers on retinal AI typically cite 40-60 papers. You are missing: hypertensive retinopathy-specific literature, multi-task learning papers, uncertainty quantification in medical imaging, recent DR papers (2021-2024), Indian retinal screening statistics, feature disentanglement literature, and many more.</div>
+    <div class="item-fix">Build the reference list to 40+ before submission.</div>
+  </div>
+</div>
+
+<div class="item fatal">
+  <div class="sev fatal">FATAL</div>
+  <div class="item-body">
+    <div class="item-title">Paper length is conference-length (~6 pages) — journals need 10-14 pages</div>
+    <div class="item-desc">Journal papers are expected to be substantially longer than conference papers with much greater depth in every section. The current paper, once TBDs are filled, will be approximately 6-7 pages in conference format. In journal format (single column, larger page) this will expand, but the actual content is still insufficient. Every section needs to be at least doubled in depth.</div>
+    <div class="item-fix">Target: 10,000-12,000 words of main text for Computers in Biology and Medicine.</div>
+  </div>
+</div>
+</div>
+
+<!-- FORMAT & STRUCTURE -->
+<div id="format" class="panel">
+<div class="label">Template and structural issues</div>
+
+<div class="item fatal">
+  <div class="sev fatal">FATAL</div>
+  <div class="item-body">
+    <div class="item-title">Wrong LaTeX template</div>
+    <div class="item-desc">IEEEtran conference → must change to target journal's template. Computers in Biology and Medicine: elsarticle.cls (download from Elsevier). IEEE Access: IEEEtran journal mode. MDPI Journal of Imaging: mdpi.cls.</div>
+  </div>
+</div>
+
+<div class="item major">
+  <div class="sev major">MAJOR</div>
+  <div class="item-body">
+    <div class="item-title">Missing sections required by journals</div>
+    <div class="item-desc">Journals require sections that conferences don't: (1) Highlights bullet points at top (Elsevier), (2) Ethics statement / IRB approval or exemption, (3) Data availability statement, (4) Code availability statement, (5) CRediT author contributions, (6) Conflict of interest declaration, (7) Funding acknowledgement. These are mandatory, not optional.</div>
+  </div>
+</div>
+
+<div class="item major">
+  <div class="sev major">MAJOR</div>
+  <div class="item-body">
+    <div class="item-title">Missing line numbers for review submission</div>
+    <div class="item-desc">Every journal review submission requires continuous line numbering in the manuscript. Reviewers write "line 342" in their comments. Without line numbers the review process breaks. Add \usepackage{lineno} \linenumbers.</div>
+  </div>
+</div>
+
+<div class="item major">
+  <div class="sev major">MAJOR</div>
+  <div class="item-body">
+    <div class="item-title">Introduction missing paper organization paragraph</div>
+    <div class="item-desc">Every journal paper ends its introduction with: "The remainder of this paper is organized as follows. Section II reviews related work. Section III describes the proposed methodology..." This is a convention, not a suggestion. Its absence makes the paper feel unfinished to editors.</div>
+  </div>
+</div>
+
+<div class="item minor">
+  <div class="sev minor">MINOR</div>
+  <div class="item-body">
+    <div class="item-title">Missing running header / journal information block</div>
+    <div class="item-desc">Journal templates include journal name, ISSN, DOI placeholder, received/accepted dates in the header. These are populated by the template — just use the correct template and they appear automatically.</div>
+  </div>
+</div>
+</div>
+
+<!-- CONTENT GAPS -->
+<div id="content" class="panel">
+<div class="label">Missing content that reviewers will demand</div>
+
+<div class="item fatal">
+  <div class="sev fatal">FATAL</div>
+  <div class="item-body">
+    <div class="item-title">No SOTA comparison table</div>
+    <div class="item-desc">You need a table comparing your DR QWK against: (1) EfficientNet-B0 standalone (your own baseline — already there), (2) ResNet-50, (3) at least 3 published papers on APTOS (Gulshan-style DNN, recent transformer paper, recent attention paper). Without this, reviewers have no way to judge if your method is actually better than existing work.</div>
+    <div class="item-fix">Add Table IV: Comparison with State-of-the-Art on APTOS 2019.</div>
+  </div>
+</div>
+
+<div class="item major">
+  <div class="sev major">MAJOR</div>
+  <div class="item-body">
+    <div class="item-title">No ablation of loss weights λ_v and λ_c</div>
+    <div class="item-desc">You set λ_v=0.5 and λ_c=0.3 but never justify these values. Reviewers will ask: "How sensitive is the model to these hyperparameters? Did you grid search? What happens at λ_c=0.1 vs 0.5?" A sensitivity analysis of the two loss weights is essential — it proves the contrastive loss is not fragile.</div>
+    <div class="item-fix">Add: mini ablation table or line plot showing QWK vs λ_c (0.1, 0.2, 0.3, 0.4, 0.5).</div>
+  </div>
+</div>
+
+<div class="item major">
+  <div class="sev major">MAJOR</div>
+  <div class="item-body">
+    <div class="item-title">No ablation of contrastive margins m_p and m_c</div>
+    <div class="item-desc">The two margins (0.1 and 0.3) define the disentanglement behaviour. How were they chosen? A reviewer will write: "The margin values appear arbitrary. No justification or sensitivity study is provided." Without this, the contrastive loss contribution looks like tuning, not principled design.</div>
+    <div class="item-fix">Add: small table showing performance at (m_p=0.05, m_c=0.2), (0.1, 0.3), (0.2, 0.4).</div>
+  </div>
+</div>
+
+<div class="item major">
+  <div class="sev major">MAJOR</div>
+  <div class="item-body">
+    <div class="item-title">No failure case analysis / discussion of limitations</div>
+    <div class="item-desc">Strong papers discuss where their method fails. What image types does MSDNet get wrong? Does it fail on very low quality images? Does it confuse grade 1 and 2? A 1-paragraph failure analysis shows scientific maturity and prevents reviewers from writing "the limitations of the proposed method are not discussed."</div>
+  </div>
+</div>
+
+<div class="item major">
+  <div class="sev major">MAJOR</div>
+  <div class="item-body">
+    <div class="item-title">Stage 1 (triage) and Stage 3 (communication) are described but not evaluated</div>
+    <div class="item-desc">The methodology mentions both stages but the results section only evaluates Stage 2 (MSDNet). If you claim a three-stage system, all three stages need results. Triage: 5-fold CV AUC with SHAP importance plot. Communication: BLEU-4, BERTScore, or a small clinician usability rating (even 5 doctors rating 10 reports on a 1-5 scale is publishable).</div>
+  </div>
+</div>
+
+<div class="item major">
+  <div class="sev major">MAJOR</div>
+  <div class="item-body">
+    <div class="item-title">Ethics statement missing</div>
+    <div class="item-desc">Medical imaging papers require an explicit statement about ethical approval or confirmation that all datasets used are publicly available and no patient consent was required. For APTOS, IDRiD, HRDC, DRIVE — they are all public datasets with their own ethics approvals. You must state: "This study uses publicly available de-identified datasets. No patient consent was required. The study was exempt from institutional ethical review."</div>
+  </div>
+</div>
+
+<div class="item minor">
+  <div class="sev minor">MINOR</div>
+  <div class="item-body">
+    <div class="item-title">Highlights section missing (Elsevier requirement)</div>
+    <div class="item-desc">Elsevier journals require 3-5 bullet "highlights" at the top: "• First simultaneous DR and HR detection from single fundus image • Novel contrastive disentanglement loss for co-occurring retinal diseases • Calibrated uncertainty scores for safe specialist referral decisions" etc.</div>
+  </div>
+</div>
+
+<div class="item minor">
+  <div class="sev minor">MINOR</div>
+  <div class="item-body">
+    <div class="item-title">Introduction uses outdated global statistics</div>
+    <div class="item-desc">Reference b1 is Zheng et al. 2012 — 12 years old. The IDF Diabetes Atlas 2023 estimates 537M diabetics. The 103M DR figure is outdated; current estimate is ~130M. Use: IDF Diabetes Atlas 2023, Teo et al. Lancet Diabetes 2023, and WHO 2023 statistics. Reviewers will notice old epidemiology.</div>
+  </div>
+</div>
+
+<div class="item minor">
+  <div class="sev minor">MINOR</div>
+  <div class="item-body">
+    <div class="item-title">No India-specific statistics despite claiming India deployment</div>
+    <div class="item-desc">The paper claims to solve a problem for India but cites no India-specific data. Add: India has 77M diabetics (IDF 2023), only 18 ophthalmologists per million population in rural areas (NPCB 2022), and fewer than 30% of diabetic patients receive annual retinal screening (Raman et al. 2019, Diabetic Medicine).</div>
+  </div>
+</div>
+</div>
+
+<!-- METHODOLOGY -->
+<div id="method" class="panel">
+<div class="label">Technical and methodological gaps reviewers will flag</div>
+
+<div class="item fatal">
+  <div class="sev fatal">FATAL</div>
+  <div class="item-body">
+    <div class="item-title">Joint training strategy for two datasets with different labels is not described</div>
+    <div class="item-desc">APTOS images have DR labels only (no HR). HRDC images have HR labels only (no DR). You cannot compute both L_DR and L_HR on every batch. How do you train? Options: (A) Alternating batches — one batch from APTOS (only L_DR active), next batch from HRDC (only L_HR active). (B) Mixed batches with masking — HR loss is masked to zero for APTOS images, DR loss masked for HRDC. (C) Pseudo-labeling. You must pick one, implement it, and describe it explicitly with an Algorithm box. This is the most critical missing implementation detail in the paper.</div>
+    <div class="item-fix">Add Algorithm 1: Multi-dataset alternating training procedure. This is probably your cleanest option — two DataLoaders, one per dataset, alternated each batch, losses computed only on relevant labels.</div>
+  </div>
+</div>
+
+<div class="item major">
+  <div class="sev major">MAJOR</div>
+  <div class="item-body">
+    <div class="item-title">FPN equation (Eq. 1) notation is ambiguous</div>
+    <div class="item-desc">Eq. 1 writes the FPN fusion in a single nested expression that's hard to follow. The "Lat" function is undefined formally. Separate it into 3 equations: P5' = Lat5(P5), P4' = Lat4(P4) + Up(P5'), P3' = Lat3(P3) + Up(P4'). Then F_out = BN(Conv3x3(P3')). This is standard FPN notation from Lin et al. 2017.</div>
+  </div>
+</div>
+
+<div class="item major">
+  <div class="sev major">MAJOR</div>
+  <div class="item-body">
+    <div class="item-title">Vessel decoder architecture (Eq. 5) is underspecified</div>
+    <div class="item-desc">Eq. 5 writes V_pred = σ(Conv(Dec(P3,P4,P5))) — this tells the reader nothing about the decoder architecture. How many upsampling blocks? What channel sizes? What skip connection strategy? The decoder needs either a small table of layer specifications or a detailed paragraph. Conference papers can get away with vague descriptions; journals cannot.</div>
+  </div>
+</div>
+
+<div class="item major">
+  <div class="sev major">MAJOR</div>
+  <div class="item-body">
+    <div class="item-title">DRIVE dataset is far too small for meaningful training (20 images)</div>
+    <div class="item-desc">DRIVE has only 40 images total (20 train, 20 test). Reviewers will immediately question whether meaningful vessel segmentation learning happens on 20 images. You need to either: (A) supplement with CHASE_DB1 (28 images) and STARE (20 images) to reach ~68 training images, or (B) use transfer learning from a pretrained vessel segmentation model, or (C) frame this as fine-tuning rather than training from scratch. Acknowledge this limitation explicitly.</div>
+  </div>
+</div>
+
+<div class="item major">
+  <div class="sev major">MAJOR</div>
+  <div class="item-body">
+    <div class="item-title">No justification for N=30 MC Dropout passes</div>
+    <div class="item-desc">You state N=30 forward passes for MC Dropout but give no justification. Standard practice is to show an uncertainty convergence plot: as N increases from 5 to 50, does the uncertainty estimate stabilize? Show that N=30 is the point of convergence. Without this, a reviewer will write "the choice of 30 stochastic passes appears arbitrary."</div>
+  </div>
+</div>
+
+<div class="item minor">
+  <div class="sev minor">MINOR</div>
+  <div class="item-body">
+    <div class="item-title">Uncertainty threshold of 0.15 is unjustified</div>
+    <div class="item-desc">u > 0.15 triggers specialist referral. How was 0.15 chosen? Plot sensitivity/specificity of the referral decision vs. threshold on a validation set, and pick the threshold at the operating point matching a clinical requirement (e.g., 95% sensitivity). This is standard for clinical decision thresholds.</div>
+  </div>
+</div>
+
+<div class="item minor">
+  <div class="sev minor">MINOR</div>
+  <div class="item-body">
+    <div class="item-title">Data augmentation described in prose only — needs a table</div>
+    <div class="item-desc">Augmentation is listed in prose. Journal standard is a table: Transformation | Parameters | Probability. This makes it reproducible. Currently the paper says "elastic transforms" without parameters (alpha, sigma) — another researcher could not reproduce your setup.</div>
+  </div>
+</div>
+
+<div class="item rewrite">
+  <div class="sev rewrite">REWRITE</div>
+  <div class="item-body">
+    <div class="item-title">Stage 1 and Stage 3 methodology sections are too brief</div>
+    <div class="item-desc">The triage model (Stage 1) gets one short subsection. The multilingual system (Stage 3) isn't described in methodology at all — it only appears in contributions and conclusion. Each stage needs a proper methodology subsection: what model, what training data, what evaluation, what output format.</div>
+  </div>
+</div>
+</div>
+
+<!-- RESULTS -->
+<div id="results" class="panel">
+<div class="label">Evaluation gaps — what journal reviewers always demand</div>
+
+<div class="item fatal">
+  <div class="sev fatal">FATAL</div>
+  <div class="item-body">
+    <div class="item-title">No SOTA comparison — papers cannot be accepted without this</div>
+    <div class="item-desc">Need a comparison table against published methods on APTOS 2019. Minimum 5 baselines. Include: EfficientNet-B0 (yours), ResNet-50 fine-tuned, VGG-19 fine-tuned, and 2-3 published papers from 2021-2024 that report QWK on APTOS. Even if MSDNet doesn't beat all of them on raw QWK, you can argue advantages in multi-task capability and uncertainty.</div>
+  </div>
+</div>
+
+<div class="item major">
+  <div class="sev major">MAJOR</div>
+  <div class="item-body">
+    <div class="item-title">No statistical significance testing</div>
+    <div class="item-desc">Journals require that performance differences be statistically validated. When you report QWK = 0.91 vs baseline 0.82, you need to show this difference is statistically significant. Run 5-fold cross-validation and report mean ± std. Add a paired t-test or Wilcoxon signed-rank test comparing MSDNet vs baseline across folds. Without this, reviewers may argue the improvement is within noise.</div>
+  </div>
+</div>
+
+<div class="item major">
+  <div class="sev major">MAJOR</div>
+  <div class="item-body">
+    <div class="item-title">Ablation table is missing key columns</div>
+    <div class="item-desc">Current ablation table has DR QWK, HR AUC, ΔQWK. Missing: (1) ECE column — shows if each component affects calibration, (2) Parameter count — shows efficiency at each step, (3) Training time per epoch — shows computational cost. Also, rows 1-3 show "---" for HR AUC because the HR branch doesn't exist yet in those configs — this should say "N/A (no HR branch)" to be clear.</div>
+  </div>
+</div>
+
+<div class="item major">
+  <div class="sev major">MAJOR</div>
+  <div class="item-body">
+    <div class="item-title">No confusion matrix for DR grading</div>
+    <div class="item-desc">DR grading is a 5-class ordinal problem. QWK is your primary metric but a confusion matrix is essential to show WHERE misclassifications occur (grade 1 vs 2 vs 3 boundary confusion is clinically very different from grade 0 vs 4 confusion). Include as a figure or supplementary table.</div>
+  </div>
+</div>
+
+<div class="item major">
+  <div class="sev major">MAJOR</div>
+  <div class="item-body">
+    <div class="item-title">Uncertainty analysis needs a reliability (calibration) diagram</div>
+    <div class="item-desc">ECE alone is a single number. A reliability diagram (confidence bins on x-axis, actual accuracy on y-axis, diagonal = perfect calibration) shows the full calibration picture. This is the standard visualization for uncertainty papers and must be included as a figure.</div>
+  </div>
+</div>
+
+<div class="item minor">
+  <div class="sev minor">MINOR</div>
+  <div class="item-body">
+    <div class="item-title">Qualitative XAI results need to show failure AND success</div>
+    <div class="item-desc">The planned heatmap figure should show: (A) clean cases where DR and HR heatmaps are clearly separated (validating disentanglement), (B) a co-occurring case showing both heatmaps active in different regions, (C) a failure case where the model is wrong — show what the heatmap looks like on a wrong prediction. Showing only successes is not scientifically credible.</div>
+  </div>
+</div>
+</div>
+
+<!-- WRITING -->
+<div id="writing" class="panel">
+<div class="label">Writing quality issues that signal inexperience to reviewers</div>
+
+<div class="item rewrite">
+  <div class="sev rewrite">REWRITE</div>
+  <div class="item-body">
+    <div class="item-title">Abstract needs quantitative results and must not say "TBD"</div>
+    <div class="item-desc">The abstract currently has "TBD" in three places. An abstract is what editors read to decide if the paper goes to review. Fill it with real numbers after experiments. Also, the abstract should follow the IMRAD structure: problem (2 sentences) → gap (1 sentence) → proposed method (3 sentences) → key results with numbers (2 sentences) → significance (1 sentence). Current abstract skips the results entirely.</div>
+  </div>
+</div>
+
+<div class="item rewrite">
+  <div class="sev rewrite">REWRITE</div>
+  <div class="item-body">
+    <div class="item-title">Related work sections are too short and don't clearly state gaps</div>
+    <div class="item-desc">Each related work subsection is 3-4 sentences. Journal level is 8-12 sentences per subsection. More critically: each subsection must END with an explicit gap statement: "However, none of the above methods address [specific gap that your work fills]." Without this, reviewers may question whether the gap you claim to fill is real.</div>
+  </div>
+</div>
+
+<div class="item rewrite">
+  <div class="sev rewrite">REWRITE</div>
+  <div class="item-body">
+    <div class="item-title">Discussion section does not exist — it's merged with results</div>
+    <div class="item-desc">Journal papers separate Results (what happened) from Discussion (why it happened, what it means). Currently there's no discussion of: why does FPN help more than CBAM? why does contrastive loss have a bigger effect on HR than DR? what do the results mean for clinical deployment? The discussion is where you show scientific insight, not just numbers.</div>
+  </div>
+</div>
+
+<div class="item minor">
+  <div class="sev minor">MINOR</div>
+  <div class="item-body">
+    <div class="item-title">Note in Results section ("Note: following tables contain placeholder values") must be removed</div>
+    <div class="item-desc">The note "The following tables contain placeholder values (marked TBD) to be filled after training experiments are completed" must never appear in a submitted paper. Remove before any submission.</div>
+  </div>
+</div>
+
+<div class="item minor">
+  <div class="sev minor">MINOR</div>
+  <div class="item-body">
+    <div class="item-title">Contribution list uses "we" inconsistently with passive voice elsewhere</div>
+    <div class="item-desc">Switch entirely to active voice. "This paper presents" and "We propose" are fine. "is proposed" and "is incorporated" are passive and weaken the paper. Journals prefer direct, confident active voice throughout. Go through every sentence and make it active.</div>
+  </div>
+</div>
+</div>
+
+<!-- REFERENCES -->
+<div id="refs" class="panel">
+<div class="label">Reference quality issues</div>
+
+<div class="item fatal">
+  <div class="sev fatal">FATAL</div>
+  <div class="item-body">
+    <div class="item-title">Only 11 references — target is 40-55 for this journal and topic</div>
+    <div class="item-desc">11 references is conference-paper level. Computers in Biology and Medicine papers on retinal AI cite 40-60. Missing entire categories of literature.</div>
+  </div>
+</div>
+
+<div class="item major">
+  <div class="sev major">MAJOR</div>
+  <div class="item-body">
+    <div class="item-title">Missing hypertensive retinopathy AI literature — your second disease has no citations</div>
+    <div class="item-desc">The paper introduces HR detection as a key contribution but cites zero papers on automated HR diagnosis. You must cite: Dai et al. (hypertensive retinopathy grading with CNNs), the HRDC 2023 challenge paper itself, Keith-Wagener-Barker classification papers, and any recent HR AI papers. Without these, reviewers will question your knowledge of that specific field.</div>
+  </div>
+</div>
+
+<div class="item major">
+  <div class="sev major">MAJOR</div>
+  <div class="item-body">
+    <div class="item-title">Missing papers that must be cited</div>
+    <div class="item-desc">
+      Required additions:<br>
+      • RETFound (Zhou et al. 2023, Nature) — foundation model for retina, must discuss<br>
+      • Uncertainty in medical AI: Begoli et al. 2019, Nature Machine Intelligence<br>
+      • Multi-task learning survey: Crawshaw 2020, arXiv<br>
+      • IDRiD challenge paper: Porwal et al. 2020, Medical Image Analysis<br>
+      • MESSIDOR-2 paper<br>
+      • Indian DR screening: Raman et al. 2019, Diabetic Medicine<br>
+      • XGBoost: Chen & Guestrin 2016, KDD<br>
+      • Feature disentanglement: Chen et al. 2016, NeurIPS (β-VAE or related)<br>
+      • EyeArt FDA approval paper for clinical context<br>
+      • IDF Diabetes Atlas 2023 for epidemiology
+    </div>
+  </div>
+</div>
+
+<div class="item minor">
+  <div class="sev minor">MINOR</div>
+  <div class="item-body">
+    <div class="item-title">Reference b3 (Ben Graham) is not a peer-reviewed paper</div>
+    <div class="item-desc">Citing a Kaggle competition report as a primary reference is acceptable in conference papers but weak in journals. Either find a journal paper that formalizes Ben Graham's technique, or cite it as a technical report with proper formatting, or add a note explaining it's an unpublished competition report.</div>
+  </div>
+</div>
+
+<div class="item minor">
+  <div class="sev minor">MINOR</div>
+  <div class="item-body">
+    <div class="item-title">Epidemiology reference is 12 years old</div>
+    <div class="item-desc">b1 (Zheng et al. 2012) for global DR statistics is outdated. Replace with: Teo et al. 2023 Lancet Diabetes & Endocrinology for DR prevalence, and IDF Diabetes Atlas 10th Edition 2021 for diabetes burden.</div>
+  </div>
+</div>
+</div>
+
+<!-- CHECKLIST -->
+<div id="checklist" class="panel">
+<div class="label">Complete pre-submission checklist — tick every box</div>
+
+<div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:12px;line-height:1.6">
+Do these IN ORDER. Do not submit until every item is ✓.
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+
+<div style="background:var(--color-background-secondary);border-radius:8px;padding:12px 14px">
+<div style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px">Phase A — Before writing (do first)</div>
+<div style="font-size:10px;color:var(--color-text-secondary);line-height:1.9">
+□ Change to correct journal template<br>
+□ Run all experiments, fill all TBDs<br>
+□ Generate 4 required figures<br>
+□ Run cross-dataset test on IDRiD<br>
+□ Run 5-fold CV and collect ± std<br>
+□ Run SOTA comparison models<br>
+□ Compute calibration (ECE + diagram)<br>
+□ Run Stage 1 triage 5-fold CV<br>
+□ Generate Stage 3 sample reports<br>
+□ Run contrastive loss sensitivity study
+</div>
+</div>
+
+<div style="background:var(--color-background-secondary);border-radius:8px;padding:12px 14px">
+<div style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px">Phase B — Writing additions</div>
+<div style="font-size:10px;color:var(--color-text-secondary);line-height:1.9">
+□ Add paper organization to Introduction<br>
+□ Expand Related Work to 8+ subsections<br>
+□ Add Algorithm 1 (joint training)<br>
+□ Add augmentation table<br>
+□ Expand vessel decoder description<br>
+□ Add Stage 1 and Stage 3 methodology<br>
+□ Add Discussion section (separate)<br>
+□ Add Limitations paragraph<br>
+□ Add Ethics statement<br>
+□ Add Data availability statement<br>
+□ Add Code availability statement<br>
+□ Add CRediT contributions<br>
+□ Add Highlights (Elsevier)
+</div>
+</div>
+
+<div style="background:var(--color-background-secondary);border-radius:8px;padding:12px 14px">
+<div style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px">Phase C — Tables and figures</div>
+<div style="font-size:10px;color:var(--color-text-secondary);line-height:1.9">
+□ Figure 1: Full architecture diagram<br>
+□ Figure 2: Preprocessing before/after<br>
+□ Figure 3: Heatmap pairs (DR+HR, 3 cases)<br>
+□ Figure 4: Reliability calibration diagram<br>
+□ Figure 5: Training loss curves<br>
+□ Table 1: Datasets (add train/val/test split)<br>
+□ Table 2: APTOS class distribution (done)<br>
+□ Table 3: Main results (fill TBDs)<br>
+□ Table 4: Full ablation (add ECE, params cols)<br>
+□ Table 5: SOTA comparison<br>
+□ Table 6: Augmentation parameters<br>
+□ Table 7: Triage model results
+</div>
+</div>
+
+<div style="background:var(--color-background-secondary);border-radius:8px;padding:12px 14px">
+<div style="font-size:11px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px">Phase D — Final checks</div>
+<div style="font-size:10px;color:var(--color-text-secondary);line-height:1.9">
+□ References ≥ 40 (currently 11)<br>
+□ Update epidemiology to 2023 data<br>
+□ Add India-specific statistics<br>
+□ Add HR-specific literature<br>
+□ Add RETFound citation + discussion<br>
+□ Replace b3 (Kaggle report) with journal ref<br>
+□ Add line numbers (\linenumbers)<br>
+□ Convert to active voice throughout<br>
+□ Remove TBD and the Note in Results<br>
+□ Verify all equation labels are referenced<br>
+□ Check all figure captions are complete<br>
+□ Spellcheck (use Grammarly or similar)<br>
+□ Target word count: 10,000–12,000 words
+</div>
+</div>
+
+</div>
+</div>
+
+<script>
+function show(id){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body></html>
